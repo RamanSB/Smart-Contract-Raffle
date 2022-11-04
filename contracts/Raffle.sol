@@ -144,7 +144,8 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatible {
         return i_entranceFee;
     }
 
-    function getPlayer(uint256 index) private view returns (address payable) {
+    // ToDo: Ensure this has private access modifier.
+    function getPlayer(uint256 index) public view returns (address payable) {
         return s_players[index];
     }
 
@@ -166,5 +167,17 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatible {
 
     function getNumberOfWords() public pure returns (uint256) {
         return NUM_WORDS;
+    }
+
+    function getTimeInterval() public view returns (uint256) {
+        return i_timeInterval;
+    }
+
+    function getRaffleState() public view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getGasLane() public view returns (bytes32) {
+        return i_gasLane;
     }
 }
