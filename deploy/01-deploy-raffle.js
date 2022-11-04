@@ -41,6 +41,12 @@ async function deploy(hre) {
         log: true,
     });
 
+    if (developmentChains.includes(network.name)) {
+        // This ensures our raffle contract can consume from the vrfCoordinator
+        const vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock");
+        await vrfCoordinatorV2Mock.addConsumer(subscriptionId, raffle.address);
+    }
+
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying...");
         await verify(raffle.address, args);

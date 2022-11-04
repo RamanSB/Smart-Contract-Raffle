@@ -108,11 +108,11 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatible {
     function performUpkeep(
         bytes calldata /*performData*/
     ) external override {
-        s_raffleState = RaffleState.CALCULATING;
         (bool upkeepNeeded, ) = checkUpkeep("");
         if (!upkeepNeeded) {
             revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
+        s_raffleState = RaffleState.CALCULATING;
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gasLane specifies the maximum ETH we will pay for a request in WEI.
             i_subscriptionId, // subscription ID from the subscription on Chainlink.
