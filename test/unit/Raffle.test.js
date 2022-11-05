@@ -117,29 +117,50 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
               it("selects a winner and sends fund", async function () {
                   let signers = await ethers.getSigners();
                   let players = [signers[0], signers[1], signers[2]]; // 3 players
-
+                  await ethers.provider.send("evm_increaseTime", [timeInterval.toNumber() + 1]);
+                  await ethers.provider.send("evm_mine", []);
                   for (let player of players) {
                       await raffleContract.connect(player).enterRaffle({ value: eligibleFeeAmount });
                   }
 
                   await raffleContract.connect(players[0]);
+
+                  const startingTimestamp = await raffleContract.getTimestampOfLastWinning();
                   const raffleBalance = await ethers.provider.getBalance(raffleContract.address);
                   console.log(`Raffle Balance: ${raffleBalance.toString()}`);
                   assert.equal((await raffleContract.getNumberOfPlayers()).toString(), "3");
-                  await ethers.provider.send("evm_increaseTime", [timeInterval.toNumber() + 100]);
-                  await ethers.provider.send("evm_mine", []);
 
-                  let txnResponse = await raffleContract.performUpkeep([]);
-                  let txnReceipt = await txnResponse.wait(1);
-                  let requestId = txnReceipt.events[1].args;
-                  await ethers.provider.send("evm_mine", []);
-                  // ToDo: Fix this. Should invoke this within a Promise based listener. See Patricks course
-                  await mockVrfCoordinatorV2Contract.fulfillRandomWords(requestId.toString(), raffleContract.address);
-                  let winner = await raffleContract.getRecentWinner();
-                  let winningBalance = await ethers.provider.getBalance(winner);
-                  console.log(`Winning Balance: ${winningBalance.toString()}`);
+                  await new Promise(async (resolve, reject) => {
+                      raffleContract.once("WinnerPicked", async () => {
+                          console.log(`Found the Event`);
+                          try {
+                              const winner = await raffleContract.getRecentWinner();
+                              console.log(winner);
+                              console.log(players[0].address);
+                              console.log(players[2].address);
+                              console.log(players[1].address);
 
-                  assert.equal(winningBalance.toString(), raffleBalance.toString());
+                              const raffleState = await raffleContract.getRaffleState();
+                              const endingTimeStamp = await raffleContract.getTimestampOfLastWinning();
+                              const numPlayers = await raffleContract.getNumberOfPlayers();
+                              assert.equal(numPlayers.toString(), "0");
+                              assert.equal(raffleState.toString(), "0");
+                              assert(endingTimeStamp > startingTimestamp);
+
+                              const winnersBalance = await ethers.provider.getBalance(winner);
+                              resolve();
+                          } catch (e) {
+                              reject();
+                          }
+                      });
+
+                      const txnResponse = await raffleContract.performUpkeep([]);
+                      const txnReceipt = await txnResponse.wait(1);
+                      await mockVrfCoordinatorV2Contract.fulfillRandomWords(
+                          txnReceipt.events[1].args.requestId,
+                          raffleContract.address
+                      );
+                  });
               });
           });
       });
